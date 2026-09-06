@@ -14,6 +14,9 @@ fork 自 [wu17481748/android-lxc-docker](https://github.com/wu17481748/android-l
 android-lxc-docker/
 ├── LXC-DOCKER-OPEN-CONFIG.sh    # LXC/Docker 内核配置注入脚本
 ├── xt_qtaguid.patch            # qtaguid 网络模块补丁
+├── keepalive.patch            # 内核级防息屏冻结补丁（keep CPU awake, 禁用 auto-suspend）
+├── keepalive/                 # keepalive 补丁源码
+│   └── keepalive.c
 ├── cgroup.patch                # cgroup 补丁（已弃用，仅作存档）
 └── scripts-legacy/             # ego-taboo 旧版脚本备份
     ├── runcpatch.sh
@@ -76,3 +79,22 @@ patch -p1 -d <内核源码目录> < xt_qtaguid.patch || echo "patch not applicab
 本仓库本身不直接编译内核，作为补丁源被 [LXC-DOCKER-KernelSU_for_k20pro](https://github.com/3032252626/LXC-DOCKER-KernelSU_for_k20pro) 的 GitHub Actions 工作流在编译时自动拉取。
 
 如需本地调试，直接克隆本仓库后按上述各文件说明执行。
+
+
+
+## 三、keepalive 防息屏冻结补丁
+
+### keepalive.patch
+
+内核级解决方案，从根上解决 Droidspaces 容器息屏后 CPU 被冻结、面板定时任务不触发的问题，不依赖任何具体容器/面板。
+
+```bash
+cd <内核源码目录>
+wget https://raw.githubusercontent.com/3032252626/android-lxc-docker/main/keepalive.patch
+patch -p1 < keepalive.patch
+```
+
+**实现机制**：注册名为 `PowerManagerService.noSuspend` 的 wakeup source 并保持 active（`__pm_stay_awake`），使内核永不自动 suspend。等价于青龙模块的 `echo PowerManagerService.noSuspend > /sys/power/wake_lock`，但运行在内核空间，重启不丢失、用户态无法清除，覆盖所有容器场景。
+
+**影响**：仅关闭整机深度休眠省电；来电/闹钟/通知仍由各自中断唤醒，不受影响。
+
