@@ -1,17 +1,9 @@
-From: 3032252626 <3032252626@users.noreply.github.com>
-Subject: [PATCH] drivers/misc: keepalive - keep CPU awake, disable auto-suspend
-
----
-drivers/misc/keepalive.c | 38 ++++++++++++++++++++++++++++++++++++++++++++
-drivers/misc/Makefile    | 1 +
- 2 files changed, 39 insertions(+)
-
 diff --git a/drivers/misc/keepalive.c b/drivers/misc/keepalive.c
 new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/drivers/misc/keepalive.c
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,39 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * keepalive.c - 内核级防息屏冻结（禁止自动 suspend）
@@ -29,7 +21,8 @@ index 0000000..0000000
 +#include <linux/init.h>
 +#include <linux/kernel.h>
 +#include <linux/module.h>
-+#include <linux/wakeup_source.h>
++#include <linux/device.h>
++#include <linux/pm_wakeup.h>
 +
 +static struct wakeup_source *no_suspend_ws;
 +
@@ -55,14 +48,8 @@ diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
 index 0000000..0000000
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
-@@ -1,6 +1,7 @@
- #
- # Makefile for misc devices
- #
+@@ -93,3 +93,4 @@
+ obj-$(CONFIG_OKL4_USER_VIPC)    += okl4-vipc.o
+ obj-$(CONFIG_OKL4_GUEST)        += okl4-panic.o
+ obj-$(CONFIG_OKL4_LINK_SHBUF)    += okl4-link-shbuf.o
 +obj-y += keepalive.o
- 
- obj-y += atmel_tclib.o      # AT91 / AT32 / NUC900
- obj-y += c2port.o
-
--- 
-2.34.1
