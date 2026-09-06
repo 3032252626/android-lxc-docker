@@ -15,7 +15,8 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/wakeup_source.h>
+#include <linux/device.h>
+#include <linux/pm_wakeup.h>
 
 static struct wakeup_source *no_suspend_ws;
 
