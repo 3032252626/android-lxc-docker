@@ -21,8 +21,6 @@ android-lxc-docker/
     └── clangfix2.sh
 ```
 
-> **注意**：原 `keepalive.patch` 与 `keepalive/keepalive.c` 已于 2026-09-07 提交 `1ac812a8` 删除。keepalive 补丁不再通过本仓库分发，改由编译工作流内嵌 heredoc 注入，详见下文「keepalive 防息屏冻结补丁说明」。
-
 ---
 
 ## 二、文件信息与用途
@@ -68,41 +66,7 @@ patch -p1 -d <内核源码目录> < xt_qtaguid.patch || echo "patch not applicab
 
 ---
 
-## 三、keepalive 防息屏冻结补丁说明
-
-### 背景
-
-解决 Droidspaces 容器息屏后 CPU 被冻结、面板定时任务不触发的问题。该问题分两层：
-
-1. 内核 suspend——由 root 写 `/sys/power/wake_lock` 持锁破除；
-2. HyperOS 3 上层应用冻结——无视 wake lock，需关闭『深度睡眠模式 / 息屏断网 / 后台冻结』开关或做冻结豁免。
-
-keepalive 方案从内核层面根治第 1 层问题，不依赖任何具体容器/面板。
-
-### 现状（重要）
-
-- 本仓库中的 `keepalive.patch` 与 `keepalive/keepalive.c` **已删除**（提交 `1ac812a8`，孤儿文件清理）。
-- keepalive 源码当前由编译工作流 `build-droidspaces-clang14.yml` 通过 **heredoc 内嵌注入** 方式写入内核源码（含 `device.h` 前置 + `pm_wakeup.h`），读取 `config.env` 中的 `ENABLE_KEEPALIVE` 开关（默认 `true`）控制是否注入，不再引用本仓库任何 keepalive 文件。
-- 若需在本地手动注入，可按原补丁内容等价实现：
-
-```bash
-cd <内核源码目录>
-# 1) 在 drivers/misc/Makefile 末尾追加一行（以 okl4-vipc.o / okl4-panic.o / okl4-link-shbuf.o 三行为锚点）
-echo 'obj-y += keepalive.o' >> drivers/misc/Makefile
-
-# 2) 写入内核驱动源码（内容为原 keepalive.c）
-#    注册名为 PowerManagerService.noSuspend 的 wakeup source 并保持 active（__pm_stay_awake），
-#    使内核永不自动 suspend；等价于 echo PowerManagerService.noSuspend > /sys/power/wake_lock，
-#    但运行在内核空间，重启不丢失、用户态无法清除，覆盖所有容器场景。
-```
-
-**实现机制**：注册名为 `PowerManagerService.noSuspend` 的 wakeup source 并保持 active（`__pm_stay_awake`），使内核永不自动 suspend。
-
-**影响**：仅关闭整机深度休眠省电；来电/闹钟/通知仍由各自中断唤醒，不受影响。
-
----
-
-## 四、旧版脚本（scripts-legacy）
+## 三、旧版脚本（scripts-legacy）
 
 备份自 [ego-taboo/LXC-DOCKER-KernelSU_Action](https://github.com/ego-taboo/LXC-DOCKER-KernelSU_Action)，供 `for_k20pro` 仓库中 `-legacy` 后缀工作流使用。补丁体系与主力文件不同，新项目不推荐使用。
 
@@ -116,10 +80,10 @@ echo 'obj-y += keepalive.o' >> drivers/misc/Makefile
 
 ---
 
-## 五、使用说明
+## 四、使用说明
 
 本仓库本身不直接编译内核，作为补丁源被 [LXC-DOCKER-KernelSU_for_k20pro](https://github.com/3032252626/LXC-DOCKER-KernelSU_for_k20pro) 的 GitHub Actions 工作流在编译时自动拉取：
 - 顶层的 `xt_qtaguid.patch` + `namespace.c` heredoc 被 `build-AB` 系列、`plan2` 工作流使用；
-- keepalive 仅由 `build-droidspaces-clang14.yml` 内嵌注入，不引用本仓库。
+- 其余由 `build-droidspaces-clang14.yml` 内嵌注入，不引用本仓库。
 
 如需本地调试，直接克隆本仓库后按上述各文件说明执行。
